@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>#NorteDeVeracruz — Selfies solidarias</title>
+<style>
+  :root{
+    --bg:#f6f6f6;
+    --card:#ffffff;
+    --accent:#ff7a1a; /* naranja */
+    --accent-dark:#e26000;
+    --muted:#666;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background:var(--bg);
+    color:#111;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:18px;
+    min-height:100vh;
+  }
+
+  .app {
+    width:100%;
+    max-width:980px;
+    margin:0 auto;
+  }
+
+  header{
+    display:flex;
+    gap:16px;
+    align-items:center;
+    margin-bottom:14px;
+  }
+  header h1{
+    margin:0;
+    font-size:20px;
+  }
+  header .donate-btn{
+    margin-left:auto;
+    background:linear-gradient(90deg,var(--accent),var(--accent-dark));
+    color:#fff;
+    padding:8px 12px;
+    border-radius:10px;
+    border:0;
+    font-weight:700;
+    cursor:pointer;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    gap:18px;
+  }
+
+  .panel {
+    background:var(--card);
+    padding:14px;
+    border-radius:12px;
+    box-shadow:0 6px 18px rgba(10,10,10,0.07);
+  }
+
+  .video-wrap{
+    position:relative;
+    border-radius:10px;
+    overflow:hidden;
+    background:#000;
+    min-height:220px;
+  }
+  video, canvas, img.preview {
+    width:100%;
+    height:auto;
+    display:block;
+    max-height:520px;
+  }
+
+  .controls{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+  button, select, label.file-btn {
+    border:0;
+    padding:10px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    font-size:14px;
+    background:var(--accent);
+    color:#fff;
+  }
+  button.ghost{ background:transparent; color:var(--accent); border:1px solid rgba(0,0,0,0.06); font-weight:600;}
+  label.file-btn{ display:inline-block; }
+  input[type=file]{ display:none; }
+
+  .side {
+    background:var(--card);
+    padding:14px;
+    border-radius:12px;
+    box-shadow:0 6px 18px rgba(10,10,10,0.07);
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  .frames-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
+    max-height:360px;
+    overflow:auto;
+    padding-right:6px;
+  }
+  .frame-thumb{
+    border-radius:8px;
+    height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg,#fff0 0,#fff0 50%);
+    border:3px solid rgba(0,0,0,0.04);
+    cursor:pointer;
+    position:relative;
+  }
+  .frame-thumb[data-selected="true"]{
+    outline:4px solid rgba(255,122,26,0.18);
+    transform:scale(1.02);
+  }
+  .frame-label{
+    position:absolute;
+    bottom:6px;
+    left:6px;
+    right:6px;
+    text-align:left;
+    font-weight:700;
+    font-size:12px;
+    color:#fff;
+    text-shadow:0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .share-btn{ background:#25D366; } /* whatsapp-ish */
+  .save-btn{ background:#388e3c; }
+  .native-share{ background:#1565c0; }
+
+  footer.small{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:10px;
+  }
+
+  /* Modal (donate) */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+  }
+  .modal{
+    width:90%;
+    max-width:520px;
+    background:#fff;
+    border-radius:12px;
+    padding:18px;
+    box-shadow:0 12px 40px rgba(0,0,0,0.35);
+  }
+  .modal h3{ margin:0 0 8px 0; }
+  .modal p{ margin:8px 0; color:var(--muted); }
+  .modal .modal-actions{ display:flex; gap:10px; margin-top:12px; }
+  .modal .btn-link{ background:var(--accent); color:#fff; border:0; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:700;}
+  .modal .btn-close{ background:transparent; border:1px solid #ddd; padding:10px 12px; border-radius:8px; cursor:pointer; }
+
+  @media (max-width:900px){
+    .grid{ grid-template-columns: 1fr; }
+    .side{ order:2; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>#NorteDeVeracruz — Selfies que dan vida</h1>
+      <button class="donate-btn" id="openDonate">🧡 Donar</button>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="panel">
+        <div class="video-wrap">
+          <video id="video" autoplay playsinline></video>
+          <canvas id="canvas" style="display:none;"></canvas>
+          <img id="preview" class="preview" alt="Previsualización" style="display:none;margin-top:0" />
+        </div>
+
+        <div class="controls">
+          <button id="startCam">Iniciar cámara</button>
+          <button id="takePhoto" class="ghost">Tomar foto</button>
+
+          <label class="file-btn">
+            Subir foto
+            <input id="fileInput" type="file" accept="image/*">
+          </label>
+
+          <button id="applyFrame" class="ghost">Aplicar marco</button>
+        </div>
+
+        <div style="margin-top:10px; font-size:13px; color:var(--muted)">
+          Si compartes desde móvil, usa <strong>Compartir</strong> para abrir WhatsApp/Facebook/Instagram nativo.
+        </div>
+
+        <div style="margin-top:12px;">
+          <strong>Preview:</strong>
+          <div id="previewInfo" style="font-size:13px;color:var(--muted)">No hay imagen aún.</div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT -->
+      <aside class="side">
+        <div>
+          <strong>Elige un marco</strong>
+          <div style="font-size:13px;color:var(--muted)">10 marcos temáticos #NorteDeVeracruz</div>
+        </div>
+
+        <div class="frames-grid" id="framesGrid" aria-live="polite"></div>
+
+        <div>
+          <label for="messageText" style="font-weight:700">Texto (opcional)</label>
+          <input id="messageText" style="width:100%;padding:8px;border-radius:8px;border:1px solid #eee;margin-top:6px" placeholder="#NorteDeVeracruz — Estamos contigo" />
+        </div>
+
+        <div class="actions">
+          <button id="downloadBtn" class="save-btn">Descargar</button>
+          <button id="nativeShare" class="native-share">Compartir (nativo)</button>
+          <button id="waShare" class="share-btn">Compartir por WhatsApp</button>
+        </div>
+
+        <div style="margin-top:8px;">
+          <button id="resetBtn" class="ghost">Reiniciar</button>
+        </div>
+
+        <div class="footer small">Diseñado para GitHub Pages — compatible con móviles</div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Donate Modal -->
+  <div class="modal-backdrop" id="donateModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <h3>Donar a Cruz Roja Mexicana</h3>
+      <p>Gracias por tu interés en apoyar. Si deseas ayudar a las personas afectadas en Veracruz, la forma más segura y efectiva es donar a través de los canales oficiales de Cruz Roja Mexicana.</p>
+
+      <p><strong>Opciones:</strong></p>
+      <ul>
+        <li>Donación en línea (tarjeta o transferencia) — sitio oficial.</li>
+        <li>Colectas y fondos específicos (p. ej. atención a desastres).</li>
+        <li>Donación de sangre — revisa horarios y requisitos en el sitio.</li>
+      </ul>
+
+      <p style="font-size:13px;color:var(--muted)">Al hacer clic en "Donar ahora" se abrirá la página oficial de Cruz Roja Mexicana en una nueva pestaña.</p>
+
+      <div class="modal-actions">
+        <button id="donateNow" class="btn-link">Donar ahora (Cruz Roja)</button>
+        <button id="closeDonate" class="btn-close">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ---------- Variables y frames (idénticos a la versión prioritaria) ---------- */
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const preview = document.getElementById('preview');
+const previewInfo = document.getElementById('previewInfo');
+const fileInput = document.getElementById('fileInput');
+const framesGrid = document.getElementById('framesGrid');
+const messageText = document.getElementById('messageText');
+
+let stream = null;
+let currentImage = null;
+let selectedFrameIndex = 0;
+const FRAME_W = 1200;
+const FRAME_H = 800;
+
+/* Marco (10) definición simplificada */
+const frames = [
+  { name: "Unidos", color:"#ff7a1a", sub:"#NorteDeVeracruz", title:"Estamos contigo", decor:"butterflies" },
+  { name: "YoMeUno", color:"#ff8f3a", sub:"#NorteDeVeracruz", title:"Yo me uno", decor:"hands" },
+  { name: "Juntos", color:"#ff6b00", sub:"#NorteDeVeracruz", title:"Juntos por Veracruz", decor:"ribbon" },
+  { name: "Apoyo", color:"#ff9b4d", sub:"#NorteDeVeracruz", title:"Apoyo al Norte", decor:"dots" },
+  { name: "Union", color:"#ff7700", sub:"#NorteDeVeracruz", title:"Unidos estamos", decor:"butterflies" },
+  { name: "NoMas", color:"#ff8a2b", sub:"#NorteDeVeracruz", title:"No más violencia", decor:"handprint" },
+  { name: "Solidario", color:"#ff9933", sub:"#NorteDeVeracruz", title:"Solidaridad con Veracruz", decor:"stars" },
+  { name: "Corazon", color:"#ff7b1a", sub:"#NorteDeVeracruz", title:"Con corazón", decor:"heart" },
+  { name: "Respeto", color:"#ff8c2b", sub:"#NorteDeVeracruz", title:"Respeto y apoyo", decor:"ribbon" },
+  { name: "Fuerza", color:"#ff6a00", sub:"#NorteDeVeracruz", title:"Fuerza Veracruz", decor:"handprint" }
+];
+
+/* DIBUJO de mini-thumbs (simplificado) */
+function drawFrame(ctx, w, h, frame, thumbnail=false){
+  ctx.clearRect(0,0,w,h);
+  const g = ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(0, shadeColor(frame.color,0.06));
+  g.addColorStop(1, shadeColor(frame.color,-0.06));
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,w,h);
+  const border = Math.round(Math.min(w,h) * (thumbnail ? 0.12 : 0.14));
+  ctx.fillStyle = frame.color;
+  ctx.fillRect(0,0,w,border);
+  ctx.fillRect(0,h-border,w,border);
+  ctx.fillRect(0,0,border,h);
+  ctx.fillRect(w-border,0,border,h);
+  ctx.fillStyle = "#fff";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  let titleFont = thumbnail ? Math.max(10, Math.round(border*0.23)) + "px sans-serif" : Math.round(border*0.5) + "px sans-serif";
+  ctx.font = `700 ${titleFont}`;
+  ctx.fillText(frame.title, border + (thumbnail?6:14), Math.round(border/2));
+  if(!thumbnail){
+    ctx.textAlign = "center";
+    ctx.font = `700 ${Math.round(border*0.28)}px sans-serif`;
+    ctx.fillText("#NorteDeVeracruz", w/2, h - Math.round(border/2));
+  }
+}
+
+function shadeColor(hex, percent){
+  const f = hex.slice(1);
+  const t = percent<0?0:255;
+  const p = Math.abs(percent);
+  const R = parseInt(f.substring(0,2),16);
+  const G = parseInt(f.substring(2,4),16);
+  const B = parseInt(f.substring(4,6),16);
+  const newR = Math.round((t - R) * p) + R;
+  const newG = Math.round((t - G) * p) + G;
+  const newB = Math.round((t - B) * p) + B;
+  return `rgb(${newR},${newG},${newB})`;
+}
+
+/* Populate thumbnails */
+function populateThumbnails(){
+  frames.forEach((f,i)=>{
+    const thumb = document.createElement('canvas');
+    thumb.width = 300;
+    thumb.height = 180;
+    const tctx = thumb.getContext('2d');
+    drawFrame(tctx, thumb.width, thumb.height, f, true);
+    const wrap = document.createElement('div');
+    wrap.className = "frame-thumb";
+    wrap.appendChild(thumb);
+    wrap.dataset.index = i;
+    wrap.title = f.title;
+    wrap.onclick = () => selectFrame(i, wrap);
+    framesGrid.appendChild(wrap);
+    if(i===0) selectFrame(0, wrap);
+  });
+}
+function selectFrame(index, element){
+  selectedFrameIndex = index;
+  document.querySelectorAll('.frame-thumb').forEach(el=> el.dataset.selected = "false");
+  element.dataset.selected = "true";
+}
+
+/* Camera */
+document.getElementById('startCam').addEventListener('click', async ()=>{
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream = null;
+    video.srcObject = null;
+    document.getElementById('startCam').textContent = "Iniciar cámara";
+    return;
+  }
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}, audio:false});
+    video.srcObject = stream;
+    document.getElementById('startCam').textContent = "Detener cámara";
+  }catch(err){
+    alert("No fue posible acceder a la cámara. Revisa permisos.");
+    console.error(err);
+  }
+});
+
+/* Take photo */
+document.getElementById('takePhoto').addEventListener('click', ()=>{
+  if(!video || !video.videoWidth) return alert("Inicia la cámara primero.");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const tmpCtx = canvas.getContext('2d');
+  tmpCtx.drawImage(video,0,0,canvas.width,canvas.height);
+  const dataURL = canvas.toDataURL('image/png');
+  showPreviewFromDataURL(dataURL);
+});
+
+/* File upload */
+fileInput.addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=> showPreviewFromDataURL(ev.target.result);
+  reader.readAsDataURL(f);
+});
+function showPreviewFromDataURL(dataURL){
+  preview.src = dataURL;
+  preview.style.display = "block";
+  canvas.style.display = "none";
+  previewInfo.textContent = "Imagen cargada. Selecciona un marco y pulsa 'Aplicar marco'.";
+  currentImage = new Image();
+  currentImage.onload = ()=>{};
+  currentImage.src = dataURL;
+}
+
+/* Apply frame */
+document.getElementById('applyFrame').addEventListener('click', ()=>{
+  if(!currentImage) return alert("Sube una foto o toma una con la cámara primero.");
+  const outW = FRAME_W;
+  const outH = FRAME_H;
+  canvas.width = outW;
+  canvas.height = outH;
+  const cctx = canvas.getContext('2d');
+  cctx.fillStyle = "#fff";
+  cctx.fillRect(0,0,outW,outH);
+  const border = Math.round(Math.min(outW,outH) * 0.14);
+  const innerW = outW - border*2;
+  const innerH = outH - border*2;
+  const imgW = currentImage.width;
+  const imgH = currentImage.height;
+  const imgRatio = imgW/imgH;
+  const boxRatio = innerW/innerH;
+  let drawW, drawH, drawX, drawY;
+  if(imgRatio > boxRatio){
+    drawH = innerH;
+    drawW = imgRatio * drawH;
+    drawX = border - (drawW - innerW)/2;
+    drawY = border;
+  } else {
+    drawW = innerW;
+    drawH = drawW / imgRatio;
+    drawX = border;
+    drawY = border - (drawH - innerH)/2;
+  }
+  cctx.drawImage(currentImage, drawX, drawY, drawW, drawH);
+  drawFrame(cctx, outW, outH, frames[selectedFrameIndex], false);
+  const userText = messageText.value.trim();
+  if(userText){
+    cctx.fillStyle = "#fff";
+    cctx.font = "700 42px sans-serif";
+    cctx.textAlign = "center";
+    cctx.fillText(userText, outW/2, outH - border/2);
+  }
+  const finalDataURL = canvas.toDataURL('image/png');
+  preview.src = finalDataURL;
+  preview.style.display = "block";
+  canvas.style.display = "none";
+  previewInfo.textContent = "Marco aplicado — puedes descargar o compartir.";
+});
+
+/* Download */
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  if(!preview.src) return alert("No hay imagen para descargar.");
+  const a = document.createElement('a');
+  a.href = preview.src;
+  a.download = 'selfie_norte_de_veracruz.png';
+  a.click();
+});
+
+/* Native share */
+document.getElementById('nativeShare').addEventListener('click', async ()=>{
+  if(!preview.src) return alert("Aplica un marco primero.");
+  try{
+    const blob = await dataURLtoBlob(preview.src);
+    const file = new File([blob], "selfie_norte_de_veracruz.png", { type: blob.type });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({
+        files: [file],
+        title: "#NorteDeVeracruz — Estoy contigo",
+        text: messageText.value || "Apoyo al #NorteDeVeracruz — estamos contigo"
+      });
+    } else if(navigator.share){
+      await navigator.share({
+        title: "#NorteDeVeracruz — Estoy contigo",
+        text: messageText.value || "Apoyo al #NorteDeVeracruz — estamos contigo"
+      });
+    } else {
+      alert("Compartir nativo no disponible en este navegador. Usa WhatsApp o descarga la imagen y compártela manualmente.");
+    }
+  }catch(err){
+    console.error(err);
+    alert("Error al compartir: " + (err && err.message ? err.message : err));
+  }
+});
+
+/* WhatsApp fallback */
+document.getElementById('waShare').addEventListener('click', ()=>{
+  if(!preview.src) return alert("Aplica un marco primero.");
+  const text = encodeURIComponent((messageText.value || "Apoyo al #NorteDeVeracruz — estamos contigo") + "\nCompartiendo desde Selfies Solidarias.");
+  const waUrl = `https://api.whatsapp.com/send?text=${text}`;
+  window.open(waUrl,'_blank');
+});
+
+/* Reset */
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  currentImage = null;
+  preview.src = "";
+  preview.style.display = "none";
+  previewInfo.textContent = "No hay imagen aún.";
+  messageText.value = "";
+});
+
+/* helper */
+function dataURLtoBlob(dataurl) { return fetch(dataurl).then(res=>res.blob()); }
+populateThumbnails();
+
+/* ---------- Donate modal logic ---------- */
+const donateModal = document.getElementById('donateModal');
+const openDonate = document.getElementById('openDonate');
+const closeDonate = document.getElementById('closeDonate');
+const donateNow = document.getElementById('donateNow');
+
+/* Official donate URL (abre en nueva pestaña) */
+const CRUZ_ROJA_DONATE_URL = "https://www.cruzrojamexicana.org.mx/donacion/pay/bar/"; // URL oficial encontrada en el sitio de Cruz Roja Mexicana
+
+openDonate.addEventListener('click', ()=> {
+  donateModal.style.display = 'flex';
+  donateModal.setAttribute('aria-hidden','false');
+});
+closeDonate.addEventListener('click', ()=> {
+  donateModal.style.display = 'none';
+  donateModal.setAttribute('aria-hidden','true');
+});
+donateNow.addEventListener('click', ()=> {
+  // abrir en nueva pestaña la página oficial de donación
+  window.open(CRUZ_ROJA_DONATE_URL, '_blank', 'noopener');
+});
+
+/* cerrar modal si clic afuera */
+donateModal.addEventListener('click', (e)=>{
+  if(e.target === donateModal){
+    donateModal.style.display = 'none';
+    donateModal.setAttribute('aria-hidden','true');
+  }
+});
+</script>
+</body>
+</html>
